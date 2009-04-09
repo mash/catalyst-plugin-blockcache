@@ -1,0 +1,6 @@
+[%- PERL -%]
+
+sleep(1);
+
+[%- END -%]
+[%- content -%]

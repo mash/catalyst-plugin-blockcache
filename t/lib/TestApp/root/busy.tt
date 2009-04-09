@@ -1,0 +1,1 @@
+[%- CACHED_INCLUDE(t='sleep_1sec.tt') -%]

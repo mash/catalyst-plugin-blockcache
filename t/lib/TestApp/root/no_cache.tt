@@ -1,0 +1,1 @@
+[%- CACHED_INCLUDE(t='non_cached_include.tt') -%]
