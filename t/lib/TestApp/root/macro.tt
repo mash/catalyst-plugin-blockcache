@@ -3,10 +3,11 @@
 
 my $c = $stash->get('c');
 my $template = $stash->get('t');
+my $params = $stash->get('p');
 my $all;
-unless ( $all = $c->get_cached_block($template) ) {
+unless ( $all = $c->get_cached_block($template, $params) ) {
  $all = $context->include( $template );
- $c->set_cached_block($template, $all);
+ $c->set_cached_block($template, $params, $all);
 }
 print $all;
 

@@ -52,4 +52,13 @@ sub busy :Local {
     $c->forward('V::TT');
 }
 
+sub sort :Local {
+    my ( $self, $c ) = @_;
+    my @data = ('a','b','c');
+    my $order = $c->stash->{order} = $c->req->param('order') || 'asc';
+    @data = ($order eq 'asc') ? sort @data : reverse sort @data;
+    $c->stash->{content} = "@data";
+    $c->forward('V::TT');
+}
+
 1;

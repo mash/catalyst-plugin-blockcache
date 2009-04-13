@@ -23,25 +23,29 @@ sub setup {
 }
 
 sub get_cached_block {
-    my ($c, $key) = @_;
+    my ($c, $key, $params) = @_;
 
-    return $c->_get_block_cache( $key ) if $c->_block_cache_expire_time($key);
+    if ( $c->_block_cache_expire_time($key) ) {
+        my $cachekey = $c->_block_cache_key($key, $params);
+        return $c->_get_block_cache( $cachekey );
+    }
     return;
 }
 
 sub set_cached_block {
-    my ($c, $key, $content) = @_;
+    my ($c, $key, $params, $content) = @_;
 
     my $expire_time = $c->_block_cache_expire_time($key);
-    $c->_set_block_cache( $key, $content, $expire_time ) if $expire_time;
+    my $cachekey = $c->_block_cache_key($key, $params);
+    $c->_set_block_cache( $cachekey, $content, $expire_time ) if $expire_time;
 
     return $content;
 }
 
 sub _get_block_cache {
     my ($c, $key) = @_;
-    
-    my $ret = $c->cache->get( $c->_block_cache_key($key) );
+
+    my $ret = $c->cache->get( $key );
     if ( $ret && $ret->{t} && $ret->{t} < time() ) {
         # expired
         if ( my $busy_lock = $c->_block_cache_busy_lock ) {
@@ -51,23 +55,30 @@ sub _get_block_cache {
         }
         return; # and go get new content to set cache again
     }
-
-    $c->log->debug("[" . __PACKAGE__ . "]got key: $key") if $ret && $ret->{c} && $c->config->{'Plugin::BlockCache'}{debug};
-
-    return $ret->{c};
+    if ( $ret && $ret->{c} ) {
+        $c->log->debug("[" . __PACKAGE__ . "]got key: $key") if $c->config->{'Plugin::BlockCache'}{debug};
+        return $ret->{c};
+    }
+    return;
 }
 
 sub _set_block_cache {
     my ($c, $key, $value, $expire_time) = @_;
 
-    $c->cache->set( $c->_block_cache_key($key), { c => $value, t => time() + $expire_time }, $expire_time + $c->_block_cache_busy_lock );
+    $c->cache->set( $key, { c => $value, t => time() + $expire_time }, $expire_time + $c->_block_cache_busy_lock );
 
     $c->log->debug("[" . __PACKAGE__ . "]set key: $key for expire_time: $expire_time") if $expire_time && $c->config->{'Plugin::BlockCache'}{debug};
 }
 
 sub _block_cache_key {
-    my ($c, $key) = @_;
-    return $c->_block_cache_namespace . ":$key";
+    my ($c, $key, $params) = @_;
+    my $params_key = '';
+    if ( $params && (ref $params eq 'HASH' ) ) {
+        for my $hashkey (sort keys %$params) {
+            $params_key .= ":$hashkey=$params->{$hashkey}"
+        }
+    }
+    return $c->_block_cache_namespace . ":$key" . ($params_key) ? $params_key : '';
 }
 
 sub _block_cache_expire_time {
